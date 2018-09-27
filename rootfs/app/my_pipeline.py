@@ -84,16 +84,16 @@ def _read_data(dir1, path_canonical=None):
 
 
 # read data
-data = _read_data(config.time_domain_dir, path_canonical=config.can_path)
+data = _read_data(config.TIME_DOMAIN_DIR, path_canonical=config.CAN_PATHS)
 
 # randomly draw 5 elements of the test (photometric) sample
 # require that at least 1 of then is a Ia
-train_indx = config.train_indx
-label_train = config.label_train
-while 1 not in train_indx and 0 not in label_train:
+train_indx = config.TRAIN_IDX
+train_label = config.TRAIN_LABEL
+while 1 not in train_indx and 0 not in train_label:
     train_indx = np.random.choice(
         range(data[20]['train_data'].shape[0]), size=5, replace=False)
-    label_train = data[20]['train_labels'][train_indx]
+    train_label = data[20]['train_labels'][train_indx]
 
 matrix_train = data[20]['train_data'][train_indx]
 
@@ -107,7 +107,7 @@ for day in range(20, 181):
 
     # train RF
     clf = RandomForestClassifier(random_state=42, n_estimators=1000)
-    clf.fit(matrix_train, label_train)
+    clf.fit(matrix_train, train_label)
 
     # calculate probability of test data
     prob = clf.predict_proba(data[day]['test_data'])
@@ -125,7 +125,7 @@ for day in range(20, 181):
     print('---------------------------------')
     print('Results for day ' + str(day))
     print('\n')
-    print('Size of training = ' + str(len(label_train)))
+    print('Size of training = ' + str(len(train_label)))
     print('\n')
     print('accuracy     =  ' + str(acc))
     print('efficiency   =  ' + str(eff))
@@ -140,7 +140,7 @@ for day in range(20, 181):
         diag[day] = [day - 20, queries[day - 1]
                      ['ID'][0], acc, eff, pur, fomr, day]
 
-    if config.mode == 'nlunc':
+    if config.MODE == 'nlunc':
         # calculate probability of query data for next day
         prob_next = clf.predict_proba(data[day + 1]['train_data'])
 
@@ -151,19 +151,19 @@ for day in range(20, 181):
         diff = [abs(line[0] - line[1]) for line in prob_next]
         indx_min = diff.index(min(diff))
 
-    elif config.mode == 'random':
+    elif config.MODE == 'random':
         # passive learning gets random draws from those SN whose brightness allow a spectra to be taken
         indx_min = np.random.randint(
             low=0, high=data[day + 1]['train_data'].shape[0])
 
-    elif config.mode == 'canonical':
+    elif config.MODE == 'canonical':
         # canonical just get the next bright object
         indx_min = count
         count = count + 1
 
     # store queried objects
     queries[day] = {}
-    if config.mode != 'canonical':
+    if config.MODE != 'canonical':
         queries[day]['data'] = data[day + 1]['train_data'][indx_min]
         queries[day]['label'] = data[day + 1]['train_labels'][indx_min]
         queries[day]['ID'] = data[day + 1]['train_ids'][indx_min]
@@ -174,7 +174,8 @@ for day in range(20, 181):
         queries[day]['ID'] = data['canonical_ids'][indx_min]
 
     # read query features
-    op5 = open(config.raw_dir + queries[day]['ID'][0] + '.DAT', 'r')
+    f_op5 = os.path.join(config.RAW_DIR, queries[day]['ID'][0] + '.DAT')
+    op5 = open(f_op5, 'r')
     lin5 = op5.readlines()
     op5.close()
 
@@ -199,9 +200,9 @@ for day in range(20, 181):
             queries[day]['snid'] = line[1]
 
         elif len(line) > 1 and line[0] == 'SIM_NON1a:':
-            if line[1] in config.snIbc:
+            if line[1] in config.SN_IBC:
                 queries[day]['sntype'] = 'Ibc'
-            elif line[1] in config.snII:
+            elif line[1] in config.SN_II:
                 queries[day]['sntype'] = 'II'
             elif line[1] == '0':
                 queries[day]['sntype'] = 'Ia'
@@ -224,28 +225,28 @@ for day in range(20, 181):
     queries[day]['z_SNR'] = np.mean(SNR['z'])
 
     # add to training
-    if config.mode == 'canonical':
+    if config.MODE == 'canonical':
         matrix_train = list(matrix_train)
         matrix_train.append(data['canonical_data'][indx_min])
         matrix_train = np.array(matrix_train)
 
-        label_train = list(label_train)
-        label_train.append(data['canonical_labels'][indx_min])
-        label_train = np.array(label_train)
+        train_label = list(train_label)
+        train_label.append(data['canonical_labels'][indx_min])
+        train_label = np.array(train_label)
 
     else:
         matrix_train = list(matrix_train)
         matrix_train.append(data[day + 1]['train_data'][indx_min])
         matrix_train = np.array(matrix_train)
 
-        label_train = list(label_train)
-        label_train.append(data[day + 1]['train_labels'][indx_min])
-        label_train = np.array(label_train)
+        train_label = list(train_label)
+        train_label.append(data[day + 1]['train_labels'][indx_min])
+        train_label = np.array(train_label)
 
 
 # train RF
 clf = RandomForestClassifier(random_state=42, n_estimators=1000)
-clf.fit(matrix_train, label_train)
+clf.fit(matrix_train, train_label)
 
 # calculate probability of test data
 prob = clf.predict_proba(data[day + 1]['test_data'])
@@ -265,7 +266,7 @@ diag[day + 1] = [day, queries[day]['ID'][0], acc, eff, pur, fomr, day + 1]
 print('---------------------------------')
 print('Results for day ' + str(day + 1))
 print('\n')
-print('Size of training = ' + str(len(label_train)))
+print('Size of training = ' + str(len(train_label)))
 print('\n')
 print('accuracy     =  ' + str(acc))
 print('efficiency   =  ' + str(eff))
@@ -275,10 +276,10 @@ print('\n')
 
 
 # save results
-if not os.path.isdir(config.out_dir):
-    os.makedirs(config.out_dir)
+if not os.path.isdir(config.OUT_DIR):
+    os.makedirs(config.OUT_DIR)
 
-op3 = open(config.diag_name, 'w')
+op3 = open(config.DIAG_NAME, 'w')
 op3.write('nqueries,snid,acc,eff,pur,fom,day_of_survey\n')
 
 for k in range(20, 182):
@@ -287,15 +288,15 @@ for k in range(20, 182):
     op3.write(str(diag[k][-1]) + '\n')
 op3.close()
 
-op4 = open(config.queries_name, 'w')
+op4 = open(config.QUERIES_NAME, 'w')
 op4.write('nqueries,snid,sntype,z,g_pkmag,r_pkmag,i_pkmag,z_pkmag,g_SNR,r_SNR,i_SNR,z_SNR,qclas,day_of_survey\n')
 
 for day in range(20, 181):
     op4.write(str(day - 19) + ',' + str(queries[day]['snid']) + ',' +
               queries[day]['sntype'] + ',' + queries[day]['z'] + ',')
-    for f in config.filters:
+    for f in config.FILTERS:
         op4.write(str(queries[day][f + '_pkmag']) + ',')
-    for f in config.filters:
+    for f in config.FILTERS:
         op4.write(str(queries[day][f + '_SNR']) + ',')
     op4.write(queries[day]['qclas'] + ',' + str(day) + '\n')
 op4.close()
