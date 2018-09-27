@@ -1,10 +1,11 @@
-import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+import config
 from diagnostics import efficiency, purity, fom
+import numpy as np
 import os
+from sklearn.ensemble import RandomForestClassifier
 
 
-def read_data(dir1, path_canonical=None):
+def _read_data(dir1, path_canonical=None):
 
     print('Reading data ... ')
 
@@ -36,7 +37,7 @@ def read_data(dir1, path_canonical=None):
     for day in range(20,182):
         data[day] = {}
 
-        op1 = open(dir1 + 'matrix_day_' + str(day) + '.dat', 'r')
+        op1 = open(dir1 + '/matrix_day_' + str(day) + '.dat', 'r')
         lin1 = op1.readlines()
         op1.close()
 
@@ -45,7 +46,7 @@ def read_data(dir1, path_canonical=None):
         matrix = np.array([[float(elem) for elem in line] for line in data1])
 
 
-        op2 = open(dir1 + 'labels_day_' + str(day) + '.dat', 'r')
+        op2 = open(dir1 + '/labels_day_' + str(day) + '.dat', 'r')
         lin2 = op2.readlines()
         op2.close()
 
@@ -79,46 +80,13 @@ def read_data(dir1, path_canonical=None):
 
     return data
 
-
-# path to time domain directory
-dir1 = '/data/time_domain/'
-
-# path to data for canonical strategy
-dir2 = '/data/'
-can_path = [dir2 + 'vanilla_lightcurves.txt', dir2 + 'vanilla_labels.txt']
-
-# path to raw data
-raw_dir = '/data/SIMGEN_PUBLIC_DES/'
-
-# tags for supernova classes
-snIbc = ['1','5','6','7','8','9','10','11','13','14','16','18','22',
-             '23','29','45','28']
-snII = ['2','3','4','12','15','17','19','20','21','24','25','26','27',
-        '30','31','32','33','34','35','36','37','38','39','40','41',
-        '42','43','44']
-
-# DES filters
-filters = ['g', 'r', 'i', 'z']
-
-# strategy options: canonical, random, nlunc
-# random -> randomly draw elements from the test sample
-# nlunc -> n-least uncertain or Active Learning
-mode = 'random'
-
 # read data
-data = read_data(dir1, path_canonical=can_path)
-
-# select initial training
-train_indx = []
-label_train = []
-
-# results
-out_dir = '/data/results'
-diag_name = out_dir + '/diag_batch_' + mode + '_bazinTD_batch1.dat'
-queries_name = out_dir + '/queries_batch_' + mode + '_bazinTD_batch1.csv'
+data = _read_data(config.time_domain_dir, path_canonical=config.can_path)
 
 # randomly draw 5 elements of the test (photometric) sample
 # require that at least 1 of then is a Ia
+train_indx = config.train_indx
+label_train = config.label_train
 while 1 not in train_indx and 0 not in label_train:
     train_indx = np.random.choice(range(data[20]['train_data'].shape[0]), size=5, replace=False)
     label_train = data[20]['train_labels'][train_indx]
@@ -168,7 +136,7 @@ for day in range(20, 181):
         diag[day] = [day - 20, queries[day - 1]['ID'][0], acc, eff, pur, fomr, day]
 
 
-    if mode == 'nlunc':
+    if config.mode == 'nlunc':
         # calculate probability of query data for next day
         prob_next = clf.predict_proba(data[day + 1]['train_data'])
 
@@ -179,18 +147,18 @@ for day in range(20, 181):
         diff = [abs(line[0] - line[1]) for line in prob_next]
         indx_min = diff.index(min(diff))
    
-    elif mode == 'random': 
+    elif config.mode == 'random': 
         # passive learning gets random draws from those SN whose brightness allow a spectra to be taken
         indx_min = np.random.randint(low=0, high=data[day + 1]['train_data'].shape[0])
 
-    elif mode == 'canonical': 
+    elif config.mode == 'canonical': 
         # canonical just get the next bright object
         indx_min = count
         count = count + 1
 
     # store queried objects
     queries[day] = {}
-    if mode != 'canonical':
+    if config.mode != 'canonical':
         queries[day]['data'] = data[day + 1]['train_data'][indx_min]
         queries[day]['label'] = data[day + 1]['train_labels'][indx_min]
         queries[day]['ID'] = data[day + 1]['train_ids'][indx_min]
@@ -201,7 +169,7 @@ for day in range(20, 181):
         queries[day]['ID'] = data['canonical_ids'][indx_min]
 
     # read query features
-    op5 = open(raw_dir + queries[day]['ID'][0] + '.DAT', 'r')
+    op5 = open(config.raw_dir + queries[day]['ID'][0] + '.DAT', 'r')
     lin5 = op5.readlines()
     op5.close()
 
@@ -226,9 +194,9 @@ for day in range(20, 181):
             queries[day]['snid'] = line[1]
 
         elif len(line) > 1 and line[0] == 'SIM_NON1a:':
-            if line[1] in snIbc:
+            if line[1] in config.snIbc:
                 queries[day]['sntype'] = 'Ibc'
-            elif line[1] in snII:
+            elif line[1] in config.snII:
                 queries[day]['sntype'] = 'II'
             elif line[1] == '0':
                 queries[day]['sntype'] = 'Ia'
@@ -251,7 +219,7 @@ for day in range(20, 181):
     queries[day]['z_SNR'] = np.mean(SNR['z'])      
 
     # add to training
-    if mode == 'canonical':
+    if config.mode == 'canonical':
         matrix_train = list(matrix_train)
         matrix_train.append(data['canonical_data'][indx_min])
         matrix_train = np.array(matrix_train)
@@ -301,10 +269,10 @@ print('\n')
 
 
 # save results
-if not os.path.isdir(out_dir):
-    os.makedirs(out_dir)
+if not os.path.isdir(config.out_dir):
+    os.makedirs(config.out_dir)
 
-op3 = open(diag_name, 'w')
+op3 = open(config.diag_name, 'w')
 op3.write('nqueries,snid,acc,eff,pur,fom,day_of_survey\n')
 
 for k in range(20, 182):
@@ -313,15 +281,15 @@ for k in range(20, 182):
     op3.write(str(diag[k][-1]) + '\n')
 op3.close()
 
-op4 = open(queries_name, 'w')
+op4 = open(config.queries_name, 'w')
 op4.write('nqueries,snid,sntype,z,g_pkmag,r_pkmag,i_pkmag,z_pkmag,g_SNR,r_SNR,i_SNR,z_SNR,qclas,day_of_survey\n')
 
 for day in range(20,181):
     op4.write(str(day - 19) + ',' + str(queries[day]['snid']) + ',' + 
               queries[day]['sntype'] + ',' + queries[day]['z'] + ',')
-    for f in filters:
+    for f in config.filters:
         op4.write(str(queries[day][f + '_pkmag']) + ',')
-    for f in filters:
+    for f in config.filters:
         op4.write(str(queries[day][f + '_SNR']) + ',')
     op4.write(queries[day]['qclas'] + ',' + str(day) + '\n')
 op4.close()
