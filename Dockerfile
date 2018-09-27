@@ -13,8 +13,7 @@ RUN apt-get -y update && \
 
 RUN apt-get -y install curl bash-completion git python-pip unzip vim wget
 
-# Install awscli
-RUN pip install scikit-learn 
-
 ADD rootfs /
+RUN pip install -r /app/requirements.txt 
+
 

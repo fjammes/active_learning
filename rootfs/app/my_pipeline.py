@@ -81,14 +81,14 @@ def read_data(dir1, path_canonical=None):
 
 
 # path to time domain directory
-dir1 = 'data/time_domain/'
+dir1 = '/data/time_domain/'
 
 # path to data for canonical strategy
-dir2 = 'data/'
+dir2 = '/data/'
 can_path = [dir2 + 'vanilla_lightcurves.txt', dir2 + 'vanilla_labels.txt']
 
 # path to raw data
-raw_dir = 'data/SIMGEN_PUBLIC_DES/'
+raw_dir = '/data/SIMGEN_PUBLIC_DES/'
 
 # tags for supernova classes
 snIbc = ['1','5','6','7','8','9','10','11','13','14','16','18','22',
@@ -111,6 +111,11 @@ data = read_data(dir1, path_canonical=can_path)
 # select initial training
 train_indx = []
 label_train = []
+
+# results
+out_dir = '/data/results'
+diag_name = out_dir + '/diag_batch_' + mode + '_bazinTD_batch1.dat'
+queries_name = out_dir + '/queries_batch_' + mode + '_bazinTD_batch1.csv'
 
 # randomly draw 5 elements of the test (photometric) sample
 # require that at least 1 of then is a Ia
@@ -296,11 +301,9 @@ print('\n')
 
 
 # save results
-out_dir = 'results'
 if not os.path.isdir(out_dir):
     os.makedirs(out_dir)
 
-diag_name = out_dir + '/diag_batch_' + mode + '_bazinTD_batch1.dat'
 op3 = open(diag_name, 'w')
 op3.write('nqueries,snid,acc,eff,pur,fom,day_of_survey\n')
 
@@ -310,7 +313,6 @@ for k in range(20, 182):
     op3.write(str(diag[k][-1]) + '\n')
 op3.close()
 
-queries_name = out_dir + '/queries_batch_' + mode + '_bazinTD_batch1.csv'
 op4 = open(queries_name, 'w')
 op4.write('nqueries,snid,sntype,z,g_pkmag,r_pkmag,i_pkmag,z_pkmag,g_SNR,r_SNR,i_SNR,z_SNR,qclas,day_of_survey\n')
 
