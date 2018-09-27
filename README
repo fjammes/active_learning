@@ -1,0 +1,34 @@
+Created by Emille Ishida on 8 September 2018
+
+This directory contains all the elements necessary to perform the Active Learning approach using 1 query per night.
+Using the code provided here you will be able to reproduce Ishida et al., 2018 - section 5.1 and figure 10.
+
+****Scripts:******
+my_pipleine.py -> the  complete active learning pipeline
+stores outputs in a folder called "results".
+user needs to choose the strategy between: canonical, random, and nlunc (nlunc=active learning)
+
+make_plots.py -> generates figure 10 from Ishida et al., 2018 using the content of the "results" folder.
+OBS1: in order to generate the plots it is necessary to run all 3 strategy options.
+OBS2: notice that given the random nature of the Random Forest classifier, the individual behavior of each curve generated is different each time a strategy is re-runned. However, what is maintained is the superior behaviour of the figure of merit (lower right panel) for the active learning strategy (blue curve). 
+
+
+*****Data********
+The "data" folder contains:
+
+files:
+vanilla_labels.txt -> this is metadata regarding the canonical strategy
+vanilla_lightcurves.txt -> this file stores the best-fit parameters for all objects that can be queried by the canonical strategy.
+
+sub-folders:
+SIMGEN_PUBLIC_DES -> contains the raw light curve data. 
+the script my_pipeline.py reads these files in order to get metadata about the observation conditions.
+
+time_domain -> files for objects available in each different observation date.
+
+labels_day_XX.dat -> where XX is the day of the survey holds information about the identification, the original train/target classification (this is not used) and a boolean variable indicating if at day XX it is possible to get a spectra for each object. In other words, if this object should be available for query or not. 
+
+matrix_day_XX.dat -> where XX is the day of the survey contains the best-fit parameters for objects with at least 5 observed points in each filter, at that day.
+
+
+
